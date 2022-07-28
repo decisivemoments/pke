@@ -3,7 +3,7 @@
 
 #include "util/types.h"
 #include "process.h"
-
+#include "spike_interface/spike_utils.h"
 #define MAX_CMDLINE_ARGS 64
 
 // elf header structure
@@ -59,5 +59,41 @@ elf_status elf_init(elf_ctx *ctx, void *info);
 elf_status elf_load(elf_ctx *ctx);
 
 void load_bincode_from_host_elf(process *p);
+
+typedef struct{  
+  uint32 sh_name; /* Section name (string tbl index) */  
+  uint32 sh_type; /* Section type */  
+  uint64 sh_flags; /* Section flags */  
+  uint64 sh_addr; /* Section virtual addr at execution */  
+  uint64 sh_offset; /* Section file offset */  
+  uint64 sh_size; /* Section size in bytes */  
+  uint32 sh_link; /* Link to another section */  
+  uint32 sh_info; /* Additional section information */  
+  uint64 sh_addralign; /* Section alignment */  
+  uint64 sh_entsize; /* Entry size if section holds table */
+}Elf64_Shdr;
+
+typedef struct {
+  uint32_t st_name;
+  uint8_t  st_info;
+  uint8_t  st_other;
+  uint16_t st_shndx;
+  uint64_t st_value;
+  uint64_t st_size;
+}Elf64_Sym;
+
+typedef struct elf_info_t {
+  spike_file_t *f;
+  process *p;
+} elf_info;
+
+typedef union {
+  uint64 buf[MAX_CMDLINE_ARGS];
+  char *argv[MAX_CMDLINE_ARGS];
+} arg_buf;
+
+char* get_file_name();
+void get_name_from_addr(uint64 addr,char* funcname);
+
 
 #endif
