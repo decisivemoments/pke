@@ -1,6 +1,7 @@
 #include "kernel/riscv.h"
 #include "kernel/process.h"
 #include "spike_interface/spike_utils.h"
+#include "util/string.h"
 
 static void handle_instruction_access_fault() { panic("Instruction access fault!"); }
 
@@ -8,7 +9,49 @@ static void handle_load_access_fault() { panic("Load access fault!"); }
 
 static void handle_store_access_fault() { panic("Store/AMO access fault!"); }
 
-static void handle_illegal_instruction() { panic("Illegal instruction!"); }
+static void handle_illegal_instruction(){
+  addr_line* templine=current->line;
+  riscv_regs* last_frame=(riscv_regs*)read_csr(mscratch);
+  //sprint("ra:%x\n",last_frame->ra);
+  while(templine){
+    //sprint("line:%lld code:%x\n",templine->line,templine->addr);
+    if(last_frame->ra == templine->addr){
+      //sprint("find error code\n");
+      uint64 error_code_line=templine->line;
+      uint64 file_index=templine->file;
+      uint64 dir_index=current->file[file_index].dir;
+      sprint("Runtime error at %s/%s:%lld\n",current->dir[dir_index],current->file[file_index].file,templine->line);
+
+      char filepath[256];
+      char code_oneline[256];
+      memset(filepath,0,sizeof(filepath));
+      memcpy(filepath,current->dir[dir_index],strlen(current->dir[dir_index]));
+      filepath[strlen(current->dir[dir_index])]='/';
+      memcpy(filepath+1+strlen(current->dir[dir_index]),current->file[file_index].file,strlen(current->file[file_index].file));
+      //sprint("%s\n",filepath);
+      spike_file_t *f;
+      f = spike_file_open(filepath, O_RDONLY, 0);
+      for(int i=1;i<templine->line;){
+        spike_file_read(f,code_oneline,1);
+        //sprint("%c",code_oneline[0]);
+        if(code_oneline[0]=='\n')
+        {
+          i++;
+        }
+      }
+      for(;;){
+        spike_file_read(f,code_oneline,1);
+        sprint("%c",code_oneline[0]);
+        if(code_oneline[0]=='\n')
+        break;
+      }
+      spike_file_close(f);
+      panic("Illegal instruction!");
+    }
+    templine++;
+  } 
+  panic("Illegal instruction!");
+}
 
 static void handle_misaligned_load() { panic("Misaligned Load!"); }
 

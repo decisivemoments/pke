@@ -83,8 +83,21 @@ typedef struct elf_ctx_t {
 } elf_ctx;
 
 elf_status elf_init(elf_ctx *ctx, void *info);
-elf_status elf_load(elf_ctx *ctx);
+elf_status elf_load(elf_ctx *ctx,process *p);
 
 void load_bincode_from_host_elf(process *p);
+
+typedef struct{  
+  uint32 sh_name; /* Section name (string tbl index) */  
+  uint32 sh_type; /* Section type */  
+  uint64 sh_flags; /* Section flags */  
+  uint64 sh_addr; /* Section virtual addr at execution */  
+  uint64 sh_offset; /* Section file offset */  
+  uint64 sh_size; /* Section size in bytes */  
+  uint32 sh_link; /* Link to another section */  
+  uint32 sh_info; /* Additional section information */  
+  uint64 sh_addralign; /* Section alignment */  
+  uint64 sh_entsize; /* Entry size if section holds table */
+}Elf64_Shdr;
 
 #endif

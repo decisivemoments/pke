@@ -197,7 +197,7 @@ endop:;
 //
 // load the elf segments to memory regions as we are in Bare mode in lab1
 //
-elf_status elf_load(elf_ctx *ctx) {
+elf_status elf_load(elf_ctx *ctx,process *p) {
   // elf_prog_header structure is defined in kernel/elf.h
   elf_prog_header ph_addr;
   int i, off;
@@ -219,6 +219,39 @@ elf_status elf_load(elf_ctx *ctx) {
       return EL_EIO;
   }
 
+  //find .debug_line
+  //sprint("to find .debug_line\n");
+  int offset;
+  Elf64_Shdr debug_line;
+  Elf64_Shdr sectionheader;
+  char stringtable[256];
+
+  //get the string table(.shstrtab) section header
+  offset=ctx->ehdr.shoff+(ctx->ehdr.shstrndx)*ctx->ehdr.shentsize;
+  if (elf_fpread(ctx, (void *)&sectionheader, sizeof(sectionheader), offset) != sizeof(sectionheader)){
+    panic("elf_load elf_fpread1");
+  }
+  //get the string table setiong
+  if (elf_fpread(ctx,(void*)stringtable,sectionheader.sh_size,sectionheader.sh_offset) != sectionheader.sh_size){
+    panic("elf_load elf_fpread2");
+  }
+
+  for(i = 0, offset = ctx->ehdr.shoff; i < ctx->ehdr.shnum; i++, offset += ctx->ehdr.shentsize){
+    // find .debug_line
+    if(elf_fpread(ctx,(void*)&sectionheader,sizeof(sectionheader),offset) != sizeof(sectionheader)){
+      panic("elf_load elf_fpread3");
+    }
+    //sprint("index:%d  offset: %d  %s\n",i,sectionheader.sh_name,stringtable+sectionheader.sh_name);
+    if(strcmp(stringtable+sectionheader.sh_name,".debug_line") == 0){
+        //sprint("find .debug_line\n");
+        p->debugline = (char*)elf_alloc_mb(ctx, ph_addr.vaddr+ph_addr.memsz, ph_addr.vaddr+ph_addr.memsz,sectionheader.sh_size);
+        if(elf_fpread(ctx,(void*)p->debugline,sectionheader.sh_size,sectionheader.sh_offset) != sectionheader.sh_size){
+            panic("elf_load elf_fpread4");
+        }
+        make_addr_line(ctx,p->debugline,sectionheader.sh_size);
+        break;
+    }
+  }
   return EL_OK;
 }
 
@@ -275,7 +308,7 @@ void load_bincode_from_host_elf(process *p) {
     panic("fail to init elfloader.\n");
 
   // load elf. elf_load() is defined above.
-  if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
+  if (elf_load(&elfloader,p) != EL_OK) panic("Fail on loading elf.\n");
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
@@ -283,5 +316,5 @@ void load_bincode_from_host_elf(process *p) {
   // close the host spike file
   spike_file_close( info.f );
 
-  sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
+  //sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
 }
