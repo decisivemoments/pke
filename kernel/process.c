@@ -35,6 +35,34 @@ process* current = NULL;
 // points to the first free page in our simple heap. added @lab2_2
 uint64 g_ufree_page = USER_FREE_ADDRESS_START;
 
+process* block_queue_head = NULL;
+
+// insert a process, proc, into the END of block queue.
+void insert_to_block_queue(process* proc) {
+  // sprint( "going to insert process %d to block queue.\n", proc->pid );
+  // if the queue is empty in the beginning
+  if( block_queue_head == NULL ){
+    proc->status = BLOCKED;
+    proc->queue_next = NULL;
+    block_queue_head = proc;
+    return;
+  }
+
+  // block queue is not empty
+  process *p;
+  // browse the block queue to see if proc is already in-queue
+  for( p=block_queue_head; p->queue_next!=NULL; p=p->queue_next )
+    if( p == proc ) return;  //already in queue
+
+  // p points to the last element of the ready queue
+  if( p==proc ) return;
+  p->queue_next = proc;
+  proc->status = BLOCKED;
+  proc->queue_next = NULL;
+
+  return;
+}
+
 //
 // switch to a user-mode process
 //
@@ -67,6 +95,12 @@ void switch_to(process* proc) {
 
   // make user page table. macro MAKE_SATP is defined in kernel/riscv.h. added @lab2_1
   uint64 user_satp = MAKE_SATP(proc->pagetable);
+
+  // check if return to wait()
+  if(proc->wait_for > 0) {
+    proc->trapframe->regs.a0 = proc->wait_for;
+    proc->wait_for = 0;
+  }
 
   // return_to_user() is defined in kernel/strap_vector.S. switch to user mode with sret.
   // note, return_to_user takes two parameters @ and after lab2_1.
@@ -156,7 +190,14 @@ int free_process( process* proc ) {
   // but for proxy kernel, it (memory leaking) may NOT be a really serious issue,
   // as it is different from regular OS, which needs to run 7x24.
   proc->status = ZOMBIE;
-
+  if(proc->parent != NULL && proc->parent->status == BLOCKED) {
+    if(proc->parent->wait_for == -1) {
+      proc->parent->wait_for = proc->pid;
+    }else if(proc->parent->wait_for != proc->pid) {
+      return 0;
+    }
+    insert_to_ready_queue(proc->parent);
+  }
   return 0;
 }
 
@@ -204,6 +245,20 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
         child->total_mapped_region++;
         break;
+      case DATA_SEGMENT:
+      //sprint("\ndebug caming fork data\n");
+      {
+        uint64 pa = (uint64)alloc_page();
+        memcpy((void*)pa,(void*)lookup_pa(parent->pagetable,parent->mapped_info[i].va),PGSIZE);
+        user_vm_map((pagetable_t)child->pagetable, (uint64)parent->mapped_info[i].va, PGSIZE,
+        (uint64)pa, prot_to_type(PROT_READ | PROT_WRITE, 1));
+        child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
+        child->mapped_info[child->total_mapped_region].npages =
+          parent->mapped_info[i].npages;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
+        child->total_mapped_region++;
+        break;
+      }
     }
   }
 
@@ -213,4 +268,21 @@ int do_fork( process* parent)
   insert_to_ready_queue( child );
 
   return child->pid;
+}
+
+
+uint64 get_parent(uint64 pid) {
+  return procs[pid].parent->pid;
+}
+
+uint64 has_active_child(uint64 pid) {
+  uint64 has = 0;
+  for(int i=0;i<NPROC;i++) {
+    if(procs[i].status == READY && procs[i].parent->pid == pid) {
+      has = 1;
+      break;
+    }
+  }
+  //sprint("\ndebug has:%d\n",has);
+  return has;
 }
