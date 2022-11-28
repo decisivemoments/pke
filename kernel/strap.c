@@ -63,6 +63,9 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       // hint: first allocate a new physical page, and then, maps the new page to the
       // virtual address that causes the page fault.
       {
+        if(stval < g_ufree_page + PGSIZE) {
+          panic("this address is not available!");
+        }
         uint64 pa = (uint64)alloc_page();
         //sprint("va:%lx, pa:%lx\n",stval, pa);
         user_vm_map((pagetable_t)current->pagetable, ROUNDDOWN(stval, PGSIZE), PGSIZE, pa, prot_to_type(PROT_WRITE | PROT_READ, 1));
