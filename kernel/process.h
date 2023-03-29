@@ -71,6 +71,9 @@ typedef struct process_t {
 
   // accounting. added @lab3_3
   int tick_count;
+
+  // if blocked for semaphore.if -1, not, else tell blocked for which semaphore
+  int blocked_for_semaphore;
 }process;
 
 // switch to run user app

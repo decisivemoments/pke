@@ -26,6 +26,15 @@ uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, u
   return ret;
 }
 
+int sem_new(int num){
+  return do_user_call(SYS_user_sem_new, num, 0, 0, 0, 0, 0, 0);
+}
+void sem_P(int num){
+  do_user_call(SYS_user_sem_P, num, 0, 0, 0, 0, 0, 0);
+}
+void sem_V(int num){
+  do_user_call(SYS_user_sem_V, num, 0, 0, 0, 0, 0, 0);
+}
 //
 // printu() supports user/lab1_1_helloworld.c
 //

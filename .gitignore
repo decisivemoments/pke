@@ -11,3 +11,4 @@ obj/
 .vscode/
 pke_out.txt
 env.txt
+.cache

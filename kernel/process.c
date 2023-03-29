@@ -82,6 +82,7 @@ void init_proc_pool() {
   for (int i = 0; i < NPROC; ++i) {
     procs[i].status = FREE;
     procs[i].pid = i;
+    procs[i].blocked_for_semaphore = -1;
   }
 }
 
@@ -204,6 +205,20 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
         child->total_mapped_region++;
         break;
+      case DATA_SEGMENT:
+      //sprint("\ndebug caming fork data\n");
+      {
+        uint64 pa = (uint64)alloc_page();
+        memcpy((void*)pa,(void*)lookup_pa(parent->pagetable,parent->mapped_info[i].va),PGSIZE);
+        user_vm_map((pagetable_t)child->pagetable, (uint64)parent->mapped_info[i].va, PGSIZE,
+        (uint64)pa, prot_to_type(PROT_READ | PROT_WRITE, 1));
+        child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
+        child->mapped_info[child->total_mapped_region].npages =
+          parent->mapped_info[i].npages;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
+        child->total_mapped_region++;
+        break;
+      }
     }
   }
 

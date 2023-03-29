@@ -8,7 +8,8 @@
 
 int main(void) {
     int main_sem, child_sem[2];
-    main_sem = sem_new(1); 
+    main_sem = sem_new(1);
+    printu("\n\nmain_sem:%d\n");
     for (int i = 0; i < 2; i++) child_sem[i] = sem_new(0);
     int pid = fork();
     if (pid == 0) {
