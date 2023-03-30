@@ -10,3 +10,5 @@ obj/
 .VSCodeCounter/
 .vscode/
 pke_out.txt
+env.txt
+build
