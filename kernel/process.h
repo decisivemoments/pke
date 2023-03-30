@@ -18,6 +18,13 @@ typedef struct trapframe_t {
   /* offset:272 */ uint64 kernel_satp;
 }trapframe;
 
+typedef struct vma{
+  int has_alloc;
+  uint64 va;
+  uint64 size;
+}vma;
+#define VMA_SIZE 32
+
 // the extremely simple definition of process, used for begining labs of PKE
 typedef struct process_t {
   // pointing to the stack used in trap handling.
@@ -26,6 +33,8 @@ typedef struct process_t {
   pagetable_t pagetable;
   // trapframe storing the context of a (User mode) process.
   trapframe* trapframe;
+  vma vmarea[VMA_SIZE];
+  int alloc_num;
 }process;
 
 // switch to run user app
